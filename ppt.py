@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 
-import os, eZ430
+import os
+import sys
+import signal
+import eZ430
 
 YES = 1
 NO = 0
@@ -13,10 +16,18 @@ if verbose:
 
 if (os.system("xdotool --version") != 0):
     print "You need xdotool."
-    os.exit(1)
+    sys.exit(1)
     
+def signal_handler(signal, frame):
+    print "\nExit program"
+    chronos.stop()
+    sys.exit(2)
+    
+signal.signal(signal.SIGINT, signal_handler)
+
+
 while 1:
-    data = chronos.read(7)
+    data = chronos.read()
     button = int(ord(data[6]))
     
     if(button == 18):
