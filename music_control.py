@@ -1,86 +1,61 @@
 #!/usr/bin/env python
-import eZ430, dbus
-#Rhythmbox dbus
+
+import os
+import sys
+import signal
+import eZ430
+import dbus
+import time
+
+YES = 1
+NO = 0
+
+verbose = NO
+chronos = eZ430.Chronos()
+
+if verbose:
+    print "Opening eZ430 on", chronos.dev
+
+if (os.system("xdotool --version") != 0):
+    print "You need xdotool."
+    sys.exit(1)
+    
+def signal_handler(signal, frame):
+    print "\nExit program"
+    chronos.stop()
+    sys.exit(2)
+    
+signal.signal(signal.SIGINT, signal_handler)
+
+
+# Rhythmbox dbus
 session_bus = dbus.SessionBus()
-proxy_obj = session_bus.get_object('org.gnome.Rhythmbox', '/org/gnome/Rhythmbox/Player')
-player = dbus.Interface(proxy_obj, 'org.gnome.Rhythmbox.Player')
-#Wireless link init
-watch = eZ430.watch()
+proxy_object = session_bus.get_object("org.gnome.Rhythmbox", "/org/gnome/Rhythmbox/Player")
+player = dbus.Interface(proxy_object, "org.gnome.Rhythmbox.Player")
 
-#Variables
-#link=0
-pd=0
-r=0
-s=0
-p=0
-playing=0
-#val=[0,0,0,0]
+# Gestures
+def sound():
+    print "Gesture detected"
+    player.playPause(1)
 
-#Gestures
-def raised():
-	print "Gesture detected!"
-	print "Name:\tHeld up"
-	print "Bind:\tToggle Play/Pause\n"
-	playing!=playing
-	player.playPause(playing)
-def pronate():
-	print "Gesture detected!"
-	print "Name:\tPronate"
-	print "Bind:\tVolume +20%\n"
-	player.setVolumeRelative(0.2)
-def supanate():
-	print "Gesture detected!"
-	print "Name:\tSupanate"
-	print "Bind:\tVolume -20%\n"
-	player.setVolumeRelative(-0.2)
-def swing_down():
-	print "Gesture detected!"
-	print "Name:\tSwing down"
-	print "Bind:\tNext track\n"
-	player.next()
-def clear():
-	pd=0
-	s=0
-	p=0
-	r=0
+position = 0
 while 1:
-	data = watch.read()
-   	acc={'x':ord(data[0]), 'y':ord(data[1]), 'z':ord(data[2])}
-	if acc['x']+acc['y']+acc['z']!=0:
-#		print "x: %s\ty:%s\tz:%s\tpd:%s"%(acc['x'],acc['y'],acc['z'],pd)
-		x=acc['x']
-		y=acc['y']
-		z=acc['z']
-	if (y>128) & (x<128):
-		pd+=1
-		r+=1
-	else:
-		pd-=1
-	if (y<128):
-		r=0
-	if pd>10:
-		pd=10
-	if pd<0:
-		pd=0
-	if p<0:
-		p=0
-	if s<0:
-		s=0
-	if (y<128) & (pd>7):
-		pd=0
-		swing_down()
-	if (r>500):
-		r=0
-		raised()
-	if (x>128)&(y>128)&(z>128):
-		p+=1
-		s=0
-	else:
-		p=0
-		s+=1
-	if p>500:
-		p=0
-		pronate()
-	if s>500:
-		s=0
-#		supanate()
+    data = chronos.read()
+    acc = {'x': ord(data[0]), 'y': ord(data[1]), 'z': ord(data[2])}
+    if acc['x'] != 0 and acc['y'] != 0 and acc['z'] != 0:
+        x = acc['x']
+        y = acc['y']
+        z = acc['z']
+    
+    if verbose:
+        print "x: " + str(x) + " y: " + str(y) + " z: " + str(z)
+
+    if (x > 5) and (x < 25) and (y > 200) and (z > 200):    # Hand up
+        position += 1
+        if position > 150:
+            sound()
+            position = 0
+
+#player.playPause(1)             # Play/Pause
+#player.setVolumeRelative(0.2)   # Volume +20%
+#player.setVolumeRelative(-0.2)  # Volume -20%
